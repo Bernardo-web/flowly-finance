@@ -12,7 +12,7 @@ import {
   Repeat,
   Wallet,
 } from "lucide-react";
-import { getUser } from "@/lib/supabase/server";
+import { getProfile, getUser } from "@/lib/supabase/server";
 import { getAccounts, getCards, getCategories } from "@/lib/data";
 import { getBudgetRows } from "@/lib/budgets";
 import { syncRecurrences } from "@/lib/sync";
@@ -41,7 +41,7 @@ function addDays(iso: string, n: number) {
 }
 
 export default async function DashboardPage() {
-  const { supabase, user } = await getUser();
+  const { supabase } = await getUser();
   await syncRecurrences(supabase);
 
   const today = todayIso();
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
 
   const [{ data: profile }, accounts, cards, categories, { data: monthTx }, { data: recent }, { data: pending }, { data: recs }, { data: bills }] =
     await Promise.all([
-      supabase.from("profiles").select("full_name").eq("id", user!.id).single(),
+      getProfile().then((data) => ({ data })),
       getAccounts(supabase),
       getCards(supabase),
       getCategories(supabase, true),

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Trash2 } from "lucide-react";
-import { getUser } from "@/lib/supabase/server";
+import { getProfile, getUser } from "@/lib/supabase/server";
 import { deleteInvite } from "./actions";
 import { InviteForm, ShareInvite } from "./invite-form";
 
@@ -11,8 +11,8 @@ export const metadata: Metadata = { title: "Convites" };
 const dateFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: "America/Sao_Paulo" });
 
 export default async function InvitesPage() {
-  const { supabase, user } = await getUser();
-  const { data: profile } = await supabase.from("profiles").select("is_admin").eq("id", user!.id).single();
+  const { supabase } = await getUser();
+  const profile = await getProfile();
   if (!profile?.is_admin) redirect("/painel");
 
   const { data: invites } = await supabase

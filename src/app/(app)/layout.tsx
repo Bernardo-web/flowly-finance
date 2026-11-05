@@ -1,16 +1,11 @@
 import { redirect } from "next/navigation";
-import { getUser } from "@/lib/supabase/server";
+import { getProfile, getUser } from "@/lib/supabase/server";
 import { AppNav } from "@/components/app-nav";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { supabase, user } = await getUser();
+  const { user } = await getUser();
   if (!user) redirect("/entrar");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, is_admin")
-    .eq("id", user.id)
-    .single();
+  const profile = await getProfile();
 
   return (
     <div className="min-h-dvh">

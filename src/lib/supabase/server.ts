@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
@@ -25,9 +26,25 @@ export async function createClient() {
   );
 }
 
-/** Usuário logado (validado no servidor do Supabase, não só pelo cookie). */
-export async function getUser() {
+export type SessionUser = { id: string; email: string };
+
+/**
+ * Usuário logado. O token é verificado pela assinatura (chaves públicas do Supabase,
+ * guardadas em cache), sem ir ao servidor de login a cada tela.
+ * `cache` faz layout e página da mesma requisição dividirem uma única verificação.
+ */
+export const getUser = cache(async () => {
   const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  return { supabase, user: data.user };
-}
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  const user: SessionUser | null = claims?.sub ? { id: claims.sub, email: String(claims.email ?? "") } : null;
+  return { supabase, user };
+});
+
+/** Perfil do usuário logado, buscado uma vez por requisição. */
+export const getProfile = cache(async () => {
+  const { supabase, user } = await getUser();
+  if (!user) return null;
+  const { data } = await supabase.from("profiles").select("full_name, is_admin").eq("id", user.id).single();
+  return (data as { full_name: string; is_admin: boolean } | null) ?? null;
+});

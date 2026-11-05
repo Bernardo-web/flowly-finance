@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight, CreditCard, FileUp, LogOut, PiggyBank, Repeat, Settings, Tags, Ticket } from "lucide-react";
-import { getUser } from "@/lib/supabase/server";
+import { getProfile, getUser } from "@/lib/supabase/server";
 import { signOut } from "@/app/(auth)/actions";
 
 export const metadata: Metadata = { title: "Mais" };
 
 export default async function MorePage() {
-  const { supabase, user } = await getUser();
-  const { data: profile } = await supabase.from("profiles").select("full_name, is_admin").eq("id", user!.id).single();
+  const { user } = await getUser();
+  const profile = await getProfile();
 
   const links = [
     { href: "/cartoes", label: "Cartões de crédito", icon: CreditCard },

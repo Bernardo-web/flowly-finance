@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { Download, Monitor, Moon, Sun } from "lucide-react";
-import { getUser } from "@/lib/supabase/server";
+import { getProfile, getUser } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { setTheme } from "./actions";
 import { DeleteAccountForm, ProfileForm } from "./forms";
@@ -10,8 +10,8 @@ import { DeleteAccountForm, ProfileForm } from "./forms";
 export const metadata: Metadata = { title: "Configurações" };
 
 export default async function SettingsPage() {
-  const { supabase, user } = await getUser();
-  const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user!.id).single();
+  const { user } = await getUser();
+  const profile = await getProfile();
   const theme = (await cookies()).get("theme")?.value ?? "system";
 
   const themes = [

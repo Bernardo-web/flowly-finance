@@ -25,18 +25,20 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const { data } = await supabase.auth.getUser();
+  // verifica o token pela assinatura (sem ida ao servidor) e renova a sessão se estiver vencendo
+  const { data } = await supabase.auth.getClaims();
+  const loggedIn = Boolean(data?.claims?.sub);
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
 
-  if (!data.user && !isPublic) {
+  if (!loggedIn && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/entrar";
     url.search = path === "/" ? "" : `?next=${encodeURIComponent(path)}`;
     return NextResponse.redirect(url);
   }
 
-  if (data.user && (path === "/entrar" || path === "/cadastro")) {
+  if (loggedIn && (path === "/entrar" || path === "/cadastro")) {
     const url = request.nextUrl.clone();
     url.pathname = "/painel";
     url.search = "";
