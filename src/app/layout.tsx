@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: { default: "Flowly", template: "%s · Flowly" },
   description: "Seu dinheiro, em fluxo e sob controle.",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/icon-192.png", sizes: "192x192" }], apple: "/apple-touch-icon.png" },
   appleWebApp: { capable: true, title: "Flowly", statusBarStyle: "default" },
 };
 
