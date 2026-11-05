@@ -5,18 +5,23 @@ Next.js + TypeScript + Supabase (PostgreSQL com Row Level Security), hospedado n
 
 ## Status
 
-**Fase 1 (pronta):** estrutura do projeto, banco de dados completo com segurança, login e
-cadastro por convite, recuperação de senha, painel inicial, tela de convites e o leitor do
-extrato CSV do Banco do Brasil (testado com um extrato real de 539 linhas).
+**Fase 1 (pronta):** estrutura do projeto, banco de dados com segurança, login e cadastro por
+convite, recuperação de senha, tela de convites e leitor do extrato CSV do Banco do Brasil.
 
-**Próxima fase:** contas, lançamentos, categorias e a tela de importação de extrato.
+**Fase 2 (pronta):** contas com saldo; categorias com subcategorias e regras aprendidas;
+lançamentos (receita, despesa, transferência, pendentes) com filtros, busca e navegação por mês;
+importação do extrato do BB com prévia editável, duplicados, aprendizado de categoria e desfazer;
+painel com gastos por categoria, pendentes e últimos lançamentos.
+
+**Próxima fase:** cartões de crédito e faturas, compras parceladas, recorrências (salário
+quinzenal, renda variável) e orçamentos por categoria.
 
 ## Estrutura
 
 ```
 src/
   app/(auth)/        entrar, cadastro (por convite), recuperar e nova senha
-  app/(app)/         área logada: painel e convites (admin)
+  app/(app)/         área logada: painel, lançamentos, contas, categorias, importar, convites
   app/auth/confirm/  destino dos links de e-mail
   app/api/keepalive/ mantém o Supabase gratuito acordado
   lib/import/        leitor do extrato do BB, normalização, sugestão de categoria e duplicados
@@ -42,6 +47,7 @@ test/                testes do importador
 
 1. Crie uma conta em [supabase.com](https://supabase.com) e um projeto novo (região **South America (São Paulo)**).
 2. Em **SQL Editor > New query**, cole todo o conteúdo de `supabase/migrations/0001_schema.sql` e clique em **Run**.
+   Depois faça o mesmo com `0002_import.sql` (sempre em ordem; cada arquivo roda uma vez só).
 3. Em **Authentication > URL Configuration**:
    - *Site URL*: o endereço do app (no começo, `http://localhost:3000`; depois, o da Vercel).
    - *Redirect URLs*: adicione `http://localhost:3000/**` e o endereço da Vercel com `/**`.
@@ -92,7 +98,9 @@ Testes de segurança do banco (precisam de um PostgreSQL local, não do Supabase
 createdb flowly_test
 psql -d flowly_test -f supabase/tests/supabase_stub.sql
 psql -d flowly_test -f supabase/migrations/0001_schema.sql
+psql -d flowly_test -f supabase/migrations/0002_import.sql
 psql -d flowly_test -f supabase/tests/rls_test.sql
+psql -d flowly_test -f supabase/tests/import_test.sql
 ```
 
 Extratos reais nunca devem ir para o repositório (o `.gitignore` já bloqueia os padrões comuns).
