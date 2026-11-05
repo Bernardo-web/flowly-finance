@@ -52,7 +52,13 @@ export default async function AccountsPage() {
           <Link href="/contas/nova" className="btn-primary">Criar primeira conta</Link>
         </section>
       ) : (
-        <ul className="card divide-y divide-[var(--border)]">{active.map(row)}</ul>
+        <>
+          <ul className="card divide-y divide-[var(--border)]">{active.map(row)}</ul>
+          <p className="muted px-1 text-xs">
+            Saldo diferente do banco? Toque na conta e use <strong>Ajustar saldo</strong> com o valor que aparece no app do
+            banco. No BB, use o &quot;Saldo do dia&quot; (conta-corrente + Rende Fácil).
+          </p>
+        </>
       )}
 
       {archived.length > 0 && (
