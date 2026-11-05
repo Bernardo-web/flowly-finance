@@ -59,7 +59,7 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
     if (!valid) return { error: "Convite inválido ou expirado. Peça um novo link." };
   }
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -69,6 +69,8 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
   });
   if (error) return { error: inviteCode ? translate(error.message) : "Cadastro somente por convite." };
 
+  // Com a confirmação de e-mail desligada no Supabase, a pessoa já entra direto
+  if (data.session) redirect("/painel");
   return { ok: "Conta criada! Enviamos um link de confirmação para o seu e-mail." };
 }
 
