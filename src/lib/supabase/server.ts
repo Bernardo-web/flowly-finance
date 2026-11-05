@@ -1,5 +1,8 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+
 import { cookies } from "next/headers";
+
+type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
 /** Cliente do Supabase para Server Components, Server Actions e Route Handlers. */
 export async function createClient() {
@@ -10,7 +13,7 @@ export async function createClient() {
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: (toSet) => {
+        setAll: (toSet: CookieToSet[]) => {
           try {
             toSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
           } catch {
