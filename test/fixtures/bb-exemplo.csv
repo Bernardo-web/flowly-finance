@@ -1,0 +1,12 @@
+Descrição;Valor;Data;Quantidade de Parcelas;Número da Parcela;Descrição Complementar;Categoria;Sub-Categoria;Origem;Instituição;Agência;Conta
+BB Rende Fácil;--11.00;04/11/2026;0;0;;Investimentos;Aplicação;Conta;Banco do Brasil;0000;00000
+Mp Padaria;--4.00;04/11/2026;0;0;Mp*Padaria;Alimentação;Bar, Rest. e Padaria;Conta;Banco do Brasil;0000;00000
+Pix Recebido;15.00;04/11/2026;0;0;Maria Exemplo;Receitas;Outros Rendimentos;Conta;Banco do Brasil;0000;00000
+BB Rende Fácil;159.35;03/11/2026;0;0;Rende Facil;Investimentos;Resgate de Investimentos;Conta;Banco do Brasil;0000;00000
+Posto Central;--54.00;31/10/2026;0;0;Posto Central;Transporte;Combustível;Conta;Banco do Brasil;0000;00000
+Pix Enviado;--100.00;30/10/2026;0;0;João da Silva;Outros;Transferência;Conta;Banco do Brasil;0000;00000
+Pix Enviado;--100.00;30/10/2026;0;0;Joao da Silva;Outros;Transferência;Conta;Banco do Brasil;0000;00000
+Compra com Cartão;--23.90;29/10/2026;0;0;Loja Exemplo;Despesas Pessoais;Compras Diversas;Conta;Banco do Brasil;0000;00000
+Pix Rejeitado;15.00;14/06/2026;0;0;Pix Não Efetuado. Erro No;Receitas;Outros Rendimentos;Conta;Banco do Brasil;0000;00000
+Mercado Bairro;--45.00;31/10/2026;0;0;Mercado Bairro;Lazer;Viagens e Lazer;Conta;Banco do Brasil;0000;00000
+Linha Quebrada;abc;31/10/2026;0;0;;Outros;Gastos Diversos;Conta;Banco do Brasil;0000;00000

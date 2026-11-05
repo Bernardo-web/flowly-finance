@@ -1,0 +1,18 @@
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# ambiente — nunca versionar chaves
+.env
+.env.local
+.env*.local
+
+# extratos reais nunca entram no repositório
+*.ofx
+extratos/
+test/fixtures/real-*
+
+.DS_Store
+.vercel
