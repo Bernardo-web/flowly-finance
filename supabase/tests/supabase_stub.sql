@@ -1,7 +1,9 @@
 -- Simula o mínimo do Supabase (schema auth, papéis e auth.uid()) para testar
 -- as migrações num PostgreSQL comum. NÃO rode isto no Supabase de verdade.
-create role anon nologin;
-create role authenticated nologin;
+do $$ begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+end $$;
 create schema auth;
 grant usage on schema auth to anon, authenticated;
 grant usage on schema public to anon, authenticated;
