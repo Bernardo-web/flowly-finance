@@ -38,7 +38,8 @@ export function AccountForm({ action, defaults }: Props) {
           placeholder="0,00"
         />
         <p className="muted mt-1 text-xs">
-          O saldo da conta antes do primeiro lançamento no Flowly. Use o sinal de menos se estava negativa.
+          Para começar do zero, use o saldo de hoje. Vai importar o extrato? Deixe 0 e informe o saldo real no fim da
+          importação: o Flowly acerta a diferença. Use o sinal de menos se estiver negativa.
         </p>
       </div>
       <ColorPicker value={defaults?.color} />

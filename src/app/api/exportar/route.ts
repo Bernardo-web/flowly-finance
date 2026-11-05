@@ -22,6 +22,8 @@ const TYPE_LABEL: Record<string, string> = {
   expense: "Despesa",
   transfer_in: "Transferência (entrada)",
   transfer_out: "Transferência (saída)",
+  adjustment_in: "Ajuste de saldo",
+  adjustment_out: "Ajuste de saldo",
 };
 
 /** Exporta os dados do usuário logado (portabilidade, LGPD). O RLS garante que só vêm os dele. */
@@ -74,7 +76,7 @@ export async function GET(request: NextRequest) {
     t.card_bill_id
       ? (cards ?? []).find((c) => c.id === cardOfBill.get(t.card_bill_id!))?.name ?? "Cartão"
       : (accounts ?? []).find((a) => a.id === t.account_id)?.name ?? "";
-  const signed = (t: Tx) => (t.type === "income" || t.type === "transfer_in" ? 1 : -1) * Number(t.amount_cents);
+  const signed = (t: Tx) => (["income", "transfer_in", "adjustment_in"].includes(t.type) ? 1 : -1) * Number(t.amount_cents);
 
   const csv = toCsv(
     ["Data", "Tipo", "Descrição", "Valor (R$)", "Categoria", "Conta ou cartão", "Situação", "Observação"],

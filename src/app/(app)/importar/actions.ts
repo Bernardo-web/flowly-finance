@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { isValidIsoDate } from "@/lib/dates";
+import { isValidIsoDate, todayIso } from "@/lib/dates";
 import { isUuid } from "@/lib/validation";
+import { parseAmountToCents } from "@/lib/money/cents";
 import { fetchAll } from "@/lib/data";
 
 /**
@@ -55,9 +56,10 @@ export type ImportPayload = {
     bank_description: string;
   }[];
   rules: { pattern: string; category_id: string }[];
+  bankBalance?: string | null; // saldo real informado pelo usuário, ex.: "1.234,56"
 };
 
-export type ImportResult = { ok: true; importId: string; count: number } | { ok: false; error: string };
+export type ImportResult = { ok: true; importId: string; count: number; adjusted: boolean } | { ok: false; error: string };
 
 export async function confirmImport(payload: ImportPayload): Promise<ImportResult> {
   // revalida tudo no servidor: o navegador não é confiável
@@ -95,8 +97,21 @@ export async function confirmImport(payload: ImportPayload): Promise<ImportResul
   });
   if (error || !data) return { ok: false, error: "Não foi possível importar. Nada foi salvo; tente de novo." };
 
+  // acerta o saldo para o valor real do banco (lança só a diferença, como "Ajuste de saldo")
+  let adjusted = false;
+  const target = payload.bankBalance ? parseAmountToCents(payload.bankBalance) : null;
+  if (target !== null) {
+    const { error: adjError } = await supabase.rpc("set_account_balance", {
+      p_account_id: payload.accountId,
+      p_target_cents: target,
+      p_on: todayIso(),
+      p_import_id: data, // desfazer a importação desfaz o ajuste junto
+    });
+    adjusted = !adjError;
+  }
+
   revalidatePath("/", "layout");
-  return { ok: true, importId: data as string, count: payload.rows.length };
+  return { ok: true, importId: data as string, count: payload.rows.length, adjusted };
 }
 
 export async function undoImport(form: FormData) {

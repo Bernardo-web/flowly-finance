@@ -85,5 +85,13 @@ export function parseOfx(text: string): ParsedStatement {
     });
   });
 
-  return finalize(bank, "ofx", rows, errors);
+  const parsed = finalize(bank, "ofx", rows, errors);
+  // saldo do extrato (LEDGERBAL): usado para sugerir o ajuste de saldo na importação
+  const ledger = text.split(/<LEDGERBAL>/i)[1]?.split(/<\/LEDGERBAL>/i)[0];
+  if (ledger) {
+    const cents = parseAmountToCents(tag(ledger, "BALAMT"));
+    const date = ofxDate(tag(ledger, "DTASOF"));
+    if (cents !== null && date) parsed.balance = { cents, date };
+  }
+  return parsed;
 }

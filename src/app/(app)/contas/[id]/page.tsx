@@ -6,7 +6,8 @@ import { isUuid } from "@/lib/validation";
 import { formatCents } from "@/lib/money/cents";
 import { PageHeader } from "@/components/page-header";
 import { AccountForm } from "../account-form";
-import { deleteAccount, setAccountArchived, updateAccount } from "../actions";
+import { adjustBalance, deleteAccount, setAccountArchived, updateAccount } from "../actions";
+import { AdjustBalanceForm } from "../adjust-form";
 
 export const metadata: Metadata = { title: "Editar conta" };
 
@@ -38,6 +39,14 @@ export default async function EditAccountPage({ params }: { params: Promise<{ id
       <Link href={`/lancamentos?conta=${account.id}`} className="btn-ghost w-full justify-center">
         Ver lançamentos desta conta ({txCount})
       </Link>
+
+      <section className="card space-y-3 p-5">
+        <h2 className="font-semibold">Ajustar saldo</h2>
+        <AdjustBalanceForm
+          action={adjustBalance.bind(null, account.id)}
+          current={centsToInput(Number(bal?.balance_cents ?? 0))}
+        />
+      </section>
 
       <AccountForm
         action={updateAccount.bind(null, account.id)}

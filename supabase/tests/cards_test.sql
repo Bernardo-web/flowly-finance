@@ -88,3 +88,26 @@ do $$ begin
 end $$;
 
 \echo 'OK: testes de cartões, recorrências e exclusão passaram'
+
+-- 6) ajuste de saldo: leva a conta ao valor real sem virar receita/despesa
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+\o /dev/null
+select id as acc_a from public.accounts where name = 'Conta do admin' \gset
+insert into public.transactions (type, amount_cents, occurred_on, description, account_id)
+values ('expense', 30000, '2026-10-01', 'histórico importado', :'acc_a');
+\o
+do $$
+declare v_acc uuid;
+begin
+  select id into v_acc from public.accounts where name = 'Conta do admin';
+  assert (select balance_cents from public.account_balances where account_id = v_acc) = -30000, 'saldo antes do ajuste';
+  assert public.set_account_balance(v_acc, 125000, '2026-11-05') = 155000, 'diferença do ajuste';
+  assert (select balance_cents from public.account_balances where account_id = v_acc) = 125000, 'saldo depois do ajuste';
+  assert public.set_account_balance(v_acc, 125000, '2026-11-05') = 0, 'ajuste repetido deveria ser zero';
+  assert public.set_account_balance(v_acc, 100000, '2026-11-05') = -25000, 'ajuste para baixo';
+  assert (select balance_cents from public.account_balances where account_id = v_acc) = 100000, 'saldo após ajuste para baixo';
+  assert (select count(*) from public.transactions where type in ('adjustment_in', 'adjustment_out')) = 2, 'ajustes criados';
+end $$;
+reset role;
+\echo 'OK: ajuste de saldo passou'

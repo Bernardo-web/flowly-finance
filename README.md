@@ -45,7 +45,7 @@ Next.js 15 + TypeScript + Tailwind, Supabase (PostgreSQL com Row Level Security)
 1. Crie uma conta em [supabase.com](https://supabase.com) e um projeto novo (região **South America (São Paulo)**).
 2. Em **SQL Editor > New query**, rode os arquivos de `supabase/migrations` **em ordem**, um de
    cada vez (colar o conteúdo e clicar em **Run**): `0001_schema.sql`, `0002_import.sql`,
-   `0003_cards_recurrences.sql`. Cada arquivo roda uma única vez.
+   `0003_cards_recurrences.sql`, `0004_balance_adjustment.sql`. Cada arquivo roda uma única vez.
 3. Em **Authentication > URL Configuration**:
    - *Site URL*: o endereço do app (no começo, `http://localhost:3000`; depois, o da Vercel).
    - *Redirect URLs*: adicione `http://localhost:3000/**` e o endereço da Vercel com `/**`.

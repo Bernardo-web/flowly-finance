@@ -16,7 +16,7 @@ type Search = Promise<{ mes?: string; conta?: string; categoria?: string; q?: st
 
 type Tx = {
   id: string;
-  type: "income" | "expense" | "transfer_in" | "transfer_out";
+  type: "income" | "expense" | "transfer_in" | "transfer_out" | "adjustment_in" | "adjustment_out";
   amount_cents: number;
   occurred_on: string;
   description: string;
@@ -170,8 +170,10 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
               <h2 className="muted mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide">{dayLabel(day)}</h2>
               <ul className="card divide-y divide-[var(--border)]">
                 {list.map((t) => {
-                  const isTransfer = t.type.startsWith("transfer");
-                  const positive = t.type === "income" || t.type === "transfer_in";
+                  // transferências e ajustes de saldo mexem no saldo, mas não são receita nem despesa
+                  const isTransfer = t.type.startsWith("transfer") || t.type.startsWith("adjustment");
+                  const isAdjust = t.type.startsWith("adjustment");
+                  const positive = t.type === "income" || t.type === "transfer_in" || t.type === "adjustment_in";
                   const cat = categoryPath(categories, t.category_id);
                   const color = categories.find((c) => c.id === t.category_id)?.color ?? "#94a3b8";
                   return (
@@ -185,7 +187,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium">{t.description}</p>
                           <p className="muted truncate text-xs">
-                            {isTransfer ? (positive ? "Entrada de transferência" : "Saída de transferência") : cat ?? "Sem categoria"}
+                            {isAdjust ? "Correção do saldo" : isTransfer ? (positive ? "Entrada de transferência" : "Saída de transferência") : cat ?? "Sem categoria"}
                             {" · "}
                             {placeName(t)}
                           </p>

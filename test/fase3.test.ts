@@ -130,3 +130,9 @@ test("exportação CSV: padrão brasileiro e proteção contra fórmulas", async
   const out = toCsv(["Data", "Valor"], [["01/11/2026", "-12,50"]], [1]);
   assert.ok(out.startsWith("﻿Data;Valor\r\n01/11/2026;-12,50"));
 });
+
+test("OFX: lê o saldo do extrato (LEDGERBAL) para acertar a conta", () => {
+  const withBal = OFX_SGML.replace("</BANKTRANLIST>", "</BANKTRANLIST><LEDGERBAL><BALAMT>1234.56<DTASOF>20261105</LEDGERBAL>");
+  assert.deepEqual(parseOfx(withBal).balance, { cents: 123456, date: "2026-11-05" });
+  assert.equal(parseOfx(OFX_SGML).balance, undefined);
+});

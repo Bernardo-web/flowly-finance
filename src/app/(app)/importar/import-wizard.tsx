@@ -52,12 +52,14 @@ export function ImportWizard({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, startSaving] = useTransition();
-  const [done, setDone] = useState<{ count: number; month: string } | null>(null);
+  const [done, setDone] = useState<{ count: number; month: string; adjusted: boolean } | null>(null);
   const [source, setSource] = useState<{ bank: string; format: "csv" | "ofx" }>({ bank: "bb", format: "csv" });
   // CSV de outro banco: tabela lida + colunas escolhidas (automáticas ou pelo usuário)
   const [table, setTable] = useState<CsvTable | null>(null);
   const [mapping, setMapping] = useState<CsvMapping | null>(null);
   const [pendingName, setPendingName] = useState("");
+  // saldo real da conta no banco, para acertar o saldo do Flowly depois da importação
+  const [bankBalance, setBankBalance] = useState("");
 
   const slugToId = useMemo(
     () => Object.fromEntries(categories.filter((c) => c.slug).map((c) => [c.slug as string, c.id])),
@@ -89,6 +91,7 @@ export function ImportWizard({
     });
 
     setSource({ bank: parsed.bank, format: parsed.format });
+    setBankBalance(parsed.balance ? (parsed.balance.cents / 100).toFixed(2).replace(".", ",") : "");
     setFileName(name);
     setRowsTotal(parsed.rows.length);
     setParseErrors(parsed.errors.length);
@@ -186,9 +189,10 @@ export function ImportWizard({
           bank_description: r.bankDescription,
         })),
         rules: [...learned.entries()].map(([pattern, category_id]) => ({ pattern, category_id })),
+        bankBalance: bankBalance.trim() || null,
       });
       if (!res.ok) return setError(res.error);
-      setDone({ count: res.count, month: monthOf(chosen[0].occurredOn) });
+      setDone({ count: res.count, month: monthOf(chosen[0].occurredOn), adjusted: res.adjusted });
       setRows(null);
     });
   }
@@ -214,7 +218,10 @@ export function ImportWizard({
       <div className="card flex flex-col items-center gap-3 p-8 text-center">
         <CheckCircle2 className="size-10 text-income" />
         <h2 className="text-lg font-semibold">{done.count} lançamentos importados</h2>
-        <p className="muted text-sm">As categorias que você escolheu já viraram regras para os próximos extratos.</p>
+        <p className="muted text-sm">
+          {done.adjusted && "O saldo da conta foi acertado com o valor do banco. "}
+          As categorias que você escolheu já viraram regras para os próximos extratos.
+        </p>
         <div className="flex gap-2">
           <Link href={`/lancamentos?mes=${done.month}&conta=${accountId}`} className="btn-primary">Ver lançamentos</Link>
           <button className="btn-ghost" onClick={() => setDone(null)}>Importar outro</button>
@@ -335,6 +342,22 @@ export function ImportWizard({
         <p className="muted text-xs">
           Rende Fácil, estornos e o que já existe no Flowly vêm desmarcados. Ao escolher uma categoria, ela vale para
           todas as linhas com a mesma descrição.
+        </p>
+      </div>
+
+      <div className="card space-y-2 p-4">
+        <label className="label mb-0" htmlFor="bank-balance">Saldo atual da conta no banco <span className="muted font-normal">(recomendado)</span></label>
+        <input
+          id="bank-balance"
+          className="input tabular-nums"
+          inputMode="decimal"
+          placeholder="Ex.: 1.234,56"
+          value={bankBalance}
+          onChange={(e) => setBankBalance(e.target.value)}
+        />
+        <p className="muted text-xs">
+          Confira no app do banco. Depois de importar, o Flowly acerta o saldo da conta para este valor, sem contar a
+          diferença como receita ou despesa.{source.format === "ofx" && bankBalance && " (Preenchido com o saldo que veio no arquivo.)"}
         </p>
       </div>
 

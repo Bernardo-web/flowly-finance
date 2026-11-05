@@ -26,6 +26,7 @@ export type ParsedStatement = {
   rows: ImportRow[];
   errors: ImportError[];
   period: { from: string; to: string } | null;
+  balance?: { cents: number; date: string } | null; // saldo informado pelo banco no arquivo (OFX)
 };
 
 const REVERSALS = ["pix rejeitado", "pix envio devolvido", "pix recebimento devolvido", "devolucao pix", "estorno pix"];

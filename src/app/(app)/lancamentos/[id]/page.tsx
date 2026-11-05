@@ -38,6 +38,26 @@ export default async function EditTransactionPage({ params }: { params: Promise<
     </form>
   );
 
+  if (tx.type === "adjustment_in" || tx.type === "adjustment_out") {
+    return (
+      <div className="mx-auto max-w-lg space-y-6">
+        <PageHeader title="Ajuste de saldo" back={back} />
+        <div className="card space-y-2 p-5">
+          <p className="text-3xl font-bold tabular-nums">
+            {tx.type === "adjustment_in" ? "+" : "−"} {formatCents(cents)}
+          </p>
+          <p className="muted text-sm">
+            {accounts.find((a) => a.id === tx.account_id)?.name} · {dayLabel(tx.occurred_on)}
+          </p>
+          <p className="text-sm">
+            Correção feita para o saldo do Flowly bater com o do banco. Não conta como receita nem despesa.
+          </p>
+        </div>
+        {deleteForm("Excluir ajuste")}
+      </div>
+    );
+  }
+
   if (tx.transfer_group) {
     const { data: legs } = await supabase
       .from("transactions")
