@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isValidIsoDate } from "@/lib/dates";
 import { isUuid } from "@/lib/validation";
+import { fetchAll } from "@/lib/data";
 
 /**
  * O que já existe na conta no período do extrato, para marcar duplicados:
@@ -13,18 +14,21 @@ import { isUuid } from "@/lib/validation";
 export async function getExisting(accountId: string, from: string, to: string) {
   if (!isUuid(accountId) || !isValidIsoDate(from) || !isValidIsoDate(to)) return { fingerprints: [], manual: [] };
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("transactions")
-    .select("type, amount_cents, occurred_on, fingerprint")
-    .eq("account_id", accountId)
-    .in("type", ["income", "expense"])
-    .gte("occurred_on", from)
-    .lte("occurred_on", to)
-    .limit(10000);
+  const data = await fetchAll<{ type: string; amount_cents: number; occurred_on: string; fingerprint: string | null }>((a, b) =>
+    supabase
+      .from("transactions")
+      .select("type, amount_cents, occurred_on, fingerprint")
+      .eq("account_id", accountId)
+      .in("type", ["income", "expense"])
+      .gte("occurred_on", from)
+      .lte("occurred_on", to)
+      .order("id")
+      .range(a, b),
+  );
 
   const fp = new Map<string, number>();
   const manual = new Map<string, number>();
-  for (const t of data ?? []) {
+  for (const t of data) {
     if (t.fingerprint) fp.set(t.fingerprint, (fp.get(t.fingerprint) ?? 0) + 1);
     else {
       const signed = t.type === "expense" ? -Number(t.amount_cents) : Number(t.amount_cents);
@@ -37,6 +41,8 @@ export async function getExisting(accountId: string, from: string, to: string) {
 
 export type ImportPayload = {
   accountId: string;
+  bank: string;
+  format: "csv" | "ofx";
   fileName: string;
   rowsTotal: number;
   rows: {
@@ -75,8 +81,8 @@ export async function confirmImport(payload: ImportPayload): Promise<ImportResul
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("confirm_import", {
     p_account_id: payload.accountId,
-    p_bank: "bb",
-    p_format: "csv",
+    p_bank: String(payload.bank ?? "csv").slice(0, 20),
+    p_format: payload.format === "ofx" ? "ofx" : "csv",
     p_file_name: String(payload.fileName ?? "").slice(0, 200),
     p_rows_total: Math.max(0, Math.floor(Number(payload.rowsTotal) || 0)),
     p_rows: payload.rows.map((r) => ({

@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* Tema: segue o sistema, a menos que o usuário escolha claro ou escuro (atributo data-theme no <html>) */
+@custom-variant dark {
+  &:where([data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(html:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
+
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 
@@ -23,13 +35,23 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0e1412;
     --surface: #151d1a;
     --border: #26302c;
     --text: #e8eeeb;
     --muted: #93a19b;
+    color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0e1412;
+  --surface: #151d1a;
+  --border: #26302c;
+  --text: #e8eeeb;
+  --muted: #93a19b;
+  color-scheme: dark;
 }
 
 body {

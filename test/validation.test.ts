@@ -59,3 +59,22 @@ test("lançamento", () => {
     false,
   );
 });
+
+test("compra no cartão, cartão e recorrência", async () => {
+  const { validateCard, validateRecurrence } = await import("../src/lib/validation.ts");
+  const card = validateTransaction({ kind: "expense", amount: "100,00", occurred_on: "2026-11-05", account_id: `card:${ACC}`, installments: "3" });
+  assert.ok(card.ok && card.data.kind === "card_expense" && card.data.installments === 3 && card.data.amount_cents === 10000);
+  assert.equal(validateTransaction({ kind: "expense", amount: "100", occurred_on: "2026-11-05", account_id: `card:${ACC}`, installments: "0" }).ok, false);
+  assert.equal(validateTransaction({ kind: "income", amount: "100", occurred_on: "2026-11-05", account_id: `card:${ACC}` }).ok, false, "receita não vai para cartão");
+
+  const c = validateCard({ name: "Ourocard", limit: "2.000,00", closing_day: "5", due_day: "12" });
+  assert.ok(c.ok && c.data.limit_cents === 200000);
+  assert.equal(validateCard({ name: "X", closing_day: "0", due_day: "12" }).ok, false);
+
+  const sal = validateRecurrence({ type: "income", description: "Salário", amount: "1.500", days: "30, 15", account_id: ACC, starts_on: "2026-11-01" });
+  assert.ok(sal.ok && sal.data.days_of_month.join() === "15,30" && sal.data.weekend_rule === "previous_business_day");
+  const tik = validateRecurrence({ type: "income", description: "TikTok", is_variable: "1", days: "15", account_id: ACC, starts_on: "2026-11-01" });
+  assert.ok(tik.ok && tik.data.amount_cents === null && tik.data.is_variable);
+  assert.equal(validateRecurrence({ type: "income", description: "X", days: "15", account_id: ACC, starts_on: "2026-11-01" }).ok, false, "fixo sem valor");
+  assert.equal(validateRecurrence({ type: "income", description: "X", amount: "1", days: "1,2,3,4,5", account_id: ACC, starts_on: "2026-11-01" }).ok, false);
+});

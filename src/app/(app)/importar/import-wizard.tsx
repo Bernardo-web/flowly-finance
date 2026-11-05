@@ -3,7 +3,10 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { CheckCircle2, FileUp, Loader2, RotateCcw } from "lucide-react";
-import { looksLikeBbCsv, parseBbCsv, type ImportRow } from "@/lib/import/bb-csv";
+import { looksLikeBbCsv, parseBbCsv } from "@/lib/import/bb-csv";
+import { looksLikeOfx, parseOfx } from "@/lib/import/ofx";
+import { guessMapping, parseGenericCsv, readCsvTable, type CsvMapping, type CsvTable } from "@/lib/import/generic-csv";
+import type { ImportRow, ParsedStatement } from "@/lib/import/common";
 import { applySuggestions, ruleFromDescription, type CategoryRule, type Suggested } from "@/lib/import/suggest";
 import { formatCents } from "@/lib/money/cents";
 import { dayLabel, monthOf } from "@/lib/dates";
@@ -50,11 +53,49 @@ export function ImportWizard({
   const [loading, setLoading] = useState(false);
   const [saving, startSaving] = useTransition();
   const [done, setDone] = useState<{ count: number; month: string } | null>(null);
+  const [source, setSource] = useState<{ bank: string; format: "csv" | "ofx" }>({ bank: "bb", format: "csv" });
+  // CSV de outro banco: tabela lida + colunas escolhidas (automáticas ou pelo usuário)
+  const [table, setTable] = useState<CsvTable | null>(null);
+  const [mapping, setMapping] = useState<CsvMapping | null>(null);
+  const [pendingName, setPendingName] = useState("");
 
   const slugToId = useMemo(
     () => Object.fromEntries(categories.filter((c) => c.slug).map((c) => [c.slug as string, c.id])),
     [categories],
   );
+
+  /** Marca duplicados e sugere categorias, depois abre a prévia. */
+  async function prepare(parsed: ParsedStatement, name: string) {
+    if (parsed.rows.length === 0 || !parsed.period) {
+      setError(parsed.errors[0]?.message ?? "Nenhuma movimentação encontrada no arquivo.");
+      return;
+    }
+    const existing = await getExisting(accountId, parsed.period.from, parsed.period.to);
+    const suggested = applySuggestions(parsed.rows, rules, slugToId, new Map(existing.fingerprints));
+
+    // lançamentos feitos à mão com mesma data e valor: provavelmente o mesmo gasto
+    const manual = new Map(existing.manual);
+    const result: Row[] = suggested.map((r, i) => {
+      let possibleDup = false;
+      if (!r.duplicate && !r.skipReason) {
+        const key = `${r.occurredOn}|${r.amountCents}`;
+        const left = manual.get(key) ?? 0;
+        if (left > 0) {
+          possibleDup = true;
+          manual.set(key, left - 1);
+        }
+      }
+      return { ...r, key: i, userPicked: false, possibleDup, selected: r.selected && !possibleDup };
+    });
+
+    setSource({ bank: parsed.bank, format: parsed.format });
+    setFileName(name);
+    setRowsTotal(parsed.rows.length);
+    setParseErrors(parsed.errors.length);
+    setRows(result);
+    setTable(null);
+    setFilter("all");
+  }
 
   async function onFile(file: File | undefined) {
     setError("");
@@ -63,41 +104,33 @@ export function ImportWizard({
     setLoading(true);
     try {
       const text = await readText(file);
-      if (!looksLikeBbCsv(text)) {
-        setError("Este arquivo não parece um extrato CSV do Banco do Brasil. Por enquanto o Flowly lê o CSV do BB; outros bancos chegam em breve.");
+      if (looksLikeOfx(text)) return await prepare(parseOfx(text), file.name);
+      if (looksLikeBbCsv(text)) return await prepare(parseBbCsv(text), file.name);
+
+      const t = readCsvTable(text);
+      if (!t || t.headers.length < 2) {
+        setError("Não reconheci o arquivo. Use o extrato em OFX (todos os bancos oferecem) ou em CSV.");
         return;
       }
-      const parsed = parseBbCsv(text);
-      if (parsed.rows.length === 0 || !parsed.period) {
-        setError(parsed.errors[0]?.message ?? "Nenhuma movimentação encontrada no arquivo.");
-        return;
-      }
-
-      const existing = await getExisting(accountId, parsed.period.from, parsed.period.to);
-      const suggested = applySuggestions(parsed.rows, rules, slugToId, new Map(existing.fingerprints));
-
-      // lançamentos feitos à mão com mesma data e valor: provavelmente o mesmo gasto
-      const manual = new Map(existing.manual);
-      const result: Row[] = suggested.map((r, i) => {
-        let possibleDup = false;
-        if (!r.duplicate && !r.skipReason) {
-          const key = `${r.occurredOn}|${r.amountCents}`;
-          const left = manual.get(key) ?? 0;
-          if (left > 0) {
-            possibleDup = true;
-            manual.set(key, left - 1);
-          }
-        }
-        return { ...r, key: i, userPicked: false, possibleDup, selected: r.selected && !possibleDup };
-      });
-
-      setFileName(file.name);
-      setRowsTotal(parsed.rows.length);
-      setParseErrors(parsed.errors.length);
-      setRows(result);
-      setFilter("all");
+      const guess = guessMapping(t);
+      if (guess) return await prepare(parseGenericCsv(t, guess), file.name);
+      // não reconheceu as colunas: o usuário indica
+      setTable(t);
+      setPendingName(file.name);
+      setMapping({ date: 0, description: Math.min(1, t.headers.length - 1), amount: Math.min(2, t.headers.length - 1), credit: null, debit: null, invert: false, dateFormat: "dmy" });
     } catch {
       setError("Não foi possível ler o arquivo.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function applyMapping() {
+    if (!table || !mapping) return;
+    setError("");
+    setLoading(true);
+    try {
+      await prepare(parseGenericCsv(table, mapping), pendingName);
     } finally {
       setLoading(false);
     }
@@ -139,6 +172,8 @@ export function ImportWizard({
     startSaving(async () => {
       const res = await confirmImport({
         accountId,
+        bank: source.bank,
+        format: source.format,
         fileName,
         rowsTotal,
         rows: chosen.map((r) => ({
@@ -188,6 +223,63 @@ export function ImportWizard({
     );
   }
 
+  // ---- passo 1b: CSV com colunas não reconhecidas
+  if (!rows && table && mapping) {
+    const colSelect = (label: string, key: "date" | "description" | "amount" | "credit" | "debit", optional = false) => (
+      <div>
+        <label className="label">{label}</label>
+        <select
+          className="input"
+          value={mapping[key] ?? ""}
+          onChange={(e) => setMapping({ ...mapping, [key]: e.target.value === "" ? null : Number(e.target.value) })}
+        >
+          {optional && <option value="">— nenhuma —</option>}
+          {table.headers.map((h, i) => (
+            <option key={i} value={i}>{h || `Coluna ${i + 1}`} {table.rows[0]?.[i] ? `(ex.: ${table.rows[0][i].slice(0, 20)})` : ""}</option>
+          ))}
+        </select>
+      </div>
+    );
+    return (
+      <div className="card space-y-4 p-5">
+        <div>
+          <h2 className="font-semibold">Quais colunas são quais?</h2>
+          <p className="muted text-sm">Não reconheci este CSV automaticamente. Indique as colunas uma vez.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {colSelect("Data", "date")}
+          {colSelect("Descrição", "description")}
+          {colSelect("Valor (com sinal)", "amount", true)}
+          <div>
+            <label className="label">Formato da data</label>
+            <select className="input" value={mapping.dateFormat} onChange={(e) => setMapping({ ...mapping, dateFormat: e.target.value as CsvMapping["dateFormat"] })}>
+              <option value="dmy">dia/mês/ano</option>
+              <option value="ymd">ano-mês-dia</option>
+              <option value="mdy">mês/dia/ano</option>
+            </select>
+          </div>
+          {mapping.amount === null && (
+            <>
+              {colSelect("Entradas (crédito)", "credit", true)}
+              {colSelect("Saídas (débito)", "debit", true)}
+            </>
+          )}
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={mapping.invert} onChange={(e) => setMapping({ ...mapping, invert: e.target.checked })} className="size-4" />
+          Inverter sinais <span className="muted">(se os gastos aparecerem como positivos)</span>
+        </label>
+        {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
+        <div className="flex gap-2">
+          <button className="btn-ghost" onClick={() => { setTable(null); setMapping(null); }}>Cancelar</button>
+          <button className="btn-primary flex-1" onClick={applyMapping} disabled={loading}>
+            {loading && <Loader2 className="size-4 animate-spin" />} Continuar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ---- passo 1: conta + arquivo
   if (!rows) {
     return (
@@ -205,10 +297,10 @@ export function ImportWizard({
         >
           {loading ? <Loader2 className="size-8 animate-spin text-brand-700" /> : <FileUp className="size-8 text-brand-700" />}
           <span className="font-medium">{loading ? "Lendo o extrato…" : "Escolher arquivo do extrato"}</span>
-          <span className="muted text-xs">CSV do Banco do Brasil · o arquivo é lido no seu aparelho e não é enviado</span>
+          <span className="muted text-xs">OFX de qualquer banco ou CSV · o arquivo é lido no seu aparelho e não é enviado</span>
           <input
             type="file"
-            accept=".csv,text/csv,text/plain"
+            accept=".csv,.ofx,.txt,text/csv,text/plain,application/x-ofx"
             className="sr-only"
             onChange={(e) => {
               onFile(e.target.files?.[0]);

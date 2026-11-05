@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/inter";
 import "./globals.css";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
   title: { default: "Flowly", template: "%s · Flowly" },
@@ -17,9 +18,10 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const theme = (await cookies()).get("theme")?.value;
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" data-theme={theme === "light" || theme === "dark" ? theme : undefined}>
       <body className="min-h-dvh font-sans antialiased">{children}</body>
     </html>
   );

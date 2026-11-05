@@ -49,6 +49,9 @@ function SignUpForm() {
       </div>
       <FormMessage state={state} />
       <SubmitButton>Criar conta</SubmitButton>
+      <p className="muted text-center text-xs">
+        Ao criar a conta, você concorda com a <Link href="/privacidade" className="underline">política de privacidade</Link>.
+      </p>
       <p className="muted text-center text-sm">
         Já tem conta? <Link href="/entrar" className="text-brand-700 hover:underline">Entrar</Link>
       </p>

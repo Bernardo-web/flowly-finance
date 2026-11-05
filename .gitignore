@@ -16,3 +16,7 @@ test/fixtures/real-*
 
 .DS_Store
 .vercel
+
+# artefatos de teste
+test-results/
+playwright-report/

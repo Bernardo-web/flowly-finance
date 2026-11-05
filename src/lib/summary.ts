@@ -39,3 +39,12 @@ export function spendingByCategory(txs: SummaryTx[], categories: SummaryCategory
   const restCents = items.slice(top - 1).reduce((s, i) => s + i.cents, 0);
   return [...head, { id: null, name: "Outras", color: "#cbd5e1", cents: restCents, share: restCents / total }];
 }
+
+export type BudgetLevel = "ok" | "warning" | "over";
+
+/** Situação do orçamento: aviso a partir de 80%, estourado a partir de 100%. */
+export function budgetStatus(spentCents: number, limitCents: number): { level: BudgetLevel; share: number; leftCents: number } {
+  const share = limitCents > 0 ? spentCents / limitCents : 0;
+  const level: BudgetLevel = share >= 1 ? "over" : share >= 0.8 ? "warning" : "ok";
+  return { level, share, leftCents: limitCents - spentCents };
+}

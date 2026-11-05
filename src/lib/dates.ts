@@ -54,3 +54,18 @@ export function isValidIsoDate(s: string): boolean {
   const d = new Date(`${s}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
+
+/** "Novembro de 2026" — para títulos (só a primeira letra maiúscula). */
+export function monthTitle(ym: string): string {
+  const s = monthLabel(ym);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** "sex 13/11" — data curta para listas compactas. */
+export function shortDay(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const wd = new Intl.DateTimeFormat("pt-BR", { weekday: "short", timeZone: "UTC" })
+    .format(new Date(Date.UTC(y, m - 1, d)))
+    .replace(".", "");
+  return `${wd} ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
+}

@@ -18,33 +18,9 @@
  */
 import { parseAmountToCents } from "../money/cents.ts";
 import { fingerprint, normalizeText, parseBrDate } from "./normalize.ts";
+import { finalize, skipReasonFor, splitCsvLine, type ImportError, type ImportRow, type ParsedStatement } from "./common.ts";
 
-export type SkipReason = "investimento" | "estorno";
-
-export type ImportRow = {
-  line: number;                 // linha no arquivo (para mensagens de erro)
-  occurredOn: string;           // ISO yyyy-mm-dd
-  amountCents: number;          // com sinal: negativo = saída
-  type: "income" | "expense";
-  description: string;          // texto que aparece no app
-  bankDescription: string;      // texto original do banco, guardado para auditoria
-  bankCategory: string;
-  bankSubcategory: string;
-  suggestedCategorySlug: string | null;
-  selected: boolean;            // vem marcado na prévia?
-  skipReason: SkipReason | null;
-  fingerprint: string;
-};
-
-export type ImportError = { line: number; message: string };
-
-export type ParsedStatement = {
-  bank: "bb";
-  format: "csv";
-  rows: ImportRow[];
-  errors: ImportError[];
-  period: { from: string; to: string } | null;
-};
+export type { ImportRow, ParsedStatement, SkipReason } from "./common.ts";
 
 const REQUIRED_HEADERS = ["descricao", "valor", "data", "descricao complementar", "categoria", "sub categoria"];
 
@@ -61,8 +37,6 @@ const GENERIC_DESCRIPTIONS = new Set([
   "pagamento de boleto",
   "pagto cobranca",
 ]);
-
-const REVERSALS = new Set(["pix rejeitado", "pix envio devolvido", "pix recebimento devolvido"]);
 
 // Categoria do BB -> categoria padrão do Flowly (ver seed_default_categories no schema).
 const CATEGORY_MAP: Record<string, { default: string | null; sub?: Record<string, string> }> = {
@@ -97,25 +71,6 @@ const CATEGORY_MAP: Record<string, { default: string | null; sub?: Record<string
 };
 
 const INCOME_SLUGS = new Set(["salario", "renda-extra", "rendimentos", "reembolsos", "outras-receitas"]);
-
-/** Divide uma linha de CSV respeitando aspas. */
-function splitCsvLine(line: string, sep: string): string[] {
-  const out: string[] = [];
-  let cur = "";
-  let quoted = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (quoted) {
-      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-      else if (ch === '"') quoted = false;
-      else cur += ch;
-    } else if (ch === '"') quoted = true;
-    else if (ch === sep) { out.push(cur); cur = ""; }
-    else cur += ch;
-  }
-  out.push(cur);
-  return out.map((c) => c.trim());
-}
 
 function mapBankCategory(category: string, subcategory: string, type: "income" | "expense"): string | null {
   const entry = CATEGORY_MAP[normalizeText(category)];
@@ -175,9 +130,7 @@ export function parseBbCsv(text: string): ParsedStatement {
     const description =
       (GENERIC_DESCRIPTIONS.has(normDesc) && complement ? complement : bankDescription) || complement || "Sem descrição";
 
-    let skipReason: SkipReason | null = null;
-    if (normalizeText(bankCategory) === "investimentos" || normDesc.includes("rende facil")) skipReason = "investimento";
-    else if (REVERSALS.has(normDesc)) skipReason = "estorno";
+    const skipReason = skipReasonFor(bankDescription, bankCategory);
 
     rows.push({
       line,
@@ -195,13 +148,5 @@ export function parseBbCsv(text: string): ParsedStatement {
     });
   }
 
-  rows.sort((a, b) => (a.occurredOn < b.occurredOn ? 1 : a.occurredOn > b.occurredOn ? -1 : a.line - b.line));
-  const dates = rows.map((r) => r.occurredOn).sort();
-  return {
-    bank: "bb",
-    format: "csv",
-    rows,
-    errors,
-    period: dates.length ? { from: dates[0], to: dates[dates.length - 1] } : null,
-  };
+  return finalize("bb", "csv", rows, errors);
 }

@@ -4,7 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeftRight,
+  CreditCard,
   FileUp,
+  PiggyBank,
+  Repeat,
+  Settings,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -23,12 +27,16 @@ export function AppNav({ isAdmin, name }: { isAdmin: boolean; name: string }) {
     { href: "/painel", label: "Painel", icon: LayoutDashboard },
     { href: "/lancamentos", label: "Lançamentos", icon: ArrowLeftRight },
     { href: "/contas", label: "Contas", icon: Wallet },
+    { href: "/cartoes", label: "Cartões", icon: CreditCard },
+    { href: "/orcamentos", label: "Orçamentos", icon: PiggyBank },
+    { href: "/recorrencias", label: "Recorrências", icon: Repeat },
     { href: "/importar", label: "Importar extrato", icon: FileUp },
     { href: "/categorias", label: "Categorias", icon: Tags },
     ...(isAdmin ? [{ href: "/convites", label: "Convites", icon: Ticket }] : []),
+    { href: "/configuracoes", label: "Configurações", icon: Settings },
   ];
   const active = (href: string) => path === href || path.startsWith(`${href}/`);
-  const inMore = ["/importar", "/categorias", "/convites", "/mais"].some(active);
+  const inMore = ["/cartoes", "/orcamentos", "/recorrencias", "/importar", "/categorias", "/convites", "/configuracoes", "/mais"].some(active);
 
   const tab = (href: string, label: string, Icon: Item["icon"], on: boolean) => (
     <Link
@@ -56,7 +64,7 @@ export function AppNav({ isAdmin, name }: { isAdmin: boolean; name: string }) {
         <Link href="/lancamentos/novo" className="btn-primary mb-4">
           <Plus className="size-4" /> Novo lançamento
         </Link>
-        <nav className="flex flex-1 flex-col gap-1">
+        <nav className="-mx-1 flex flex-1 flex-col gap-0.5 overflow-y-auto px-1">
           {items.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}

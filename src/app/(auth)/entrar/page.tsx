@@ -12,7 +12,11 @@ function LoginForm() {
   const params = useSearchParams();
   const next = params.get("next") ?? "";
   const linkError =
-    params.get("erro") === "link-invalido" ? { error: "Este link expirou ou já foi usado. Tente de novo." } : undefined;
+    params.get("erro") === "link-invalido"
+      ? { error: "Este link expirou ou já foi usado. Tente de novo." }
+      : params.get("conta") === "excluida"
+        ? { ok: "Sua conta e todos os seus dados foram excluídos." }
+        : undefined;
 
   return (
     <form action={action} className="space-y-4">

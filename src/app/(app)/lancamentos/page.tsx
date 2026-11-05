@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeftRight, Check, ChevronLeft, ChevronRight, Clock, Plus, Search } from "lucide-react";
 import { getUser } from "@/lib/supabase/server";
-import { categoryPath, getAccounts, getCategories } from "@/lib/data";
-import { dayLabel, monthBounds, monthLabel, parseMonth, shiftMonth } from "@/lib/dates";
+import { categoryPath, getAccounts, getCards, getCategories } from "@/lib/data";
+import { dayLabel, monthBounds, monthTitle, parseMonth, shiftMonth } from "@/lib/dates";
 import { formatCents } from "@/lib/money/cents";
 import { isUuid } from "@/lib/validation";
 import { PageHeader } from "@/components/page-header";
 import { markPaid } from "./actions";
+import { syncRecurrences } from "@/lib/sync";
 
 export const metadata: Metadata = { title: "Lançamentos" };
 
@@ -21,6 +22,7 @@ type Tx = {
   description: string;
   status: "paid" | "pending";
   account_id: string | null;
+  card_bill_id: string | null;
   category_id: string | null;
 };
 
@@ -34,11 +36,12 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   const status = sp.status === "pending" ? "pending" : undefined;
 
   const { supabase } = await getUser();
-  const [accounts, categories] = await Promise.all([getAccounts(supabase, true), getCategories(supabase, true)]);
+  await syncRecurrences(supabase);
+  const [accounts, cards, categories] = await Promise.all([getAccounts(supabase, true), getCards(supabase, true), getCategories(supabase, true)]);
 
   let query = supabase
     .from("transactions")
-    .select("id, type, amount_cents, occurred_on, description, status, account_id, category_id")
+    .select("id, type, amount_cents, occurred_on, description, status, account_id, card_bill_id, category_id")
     .gte("occurred_on", from)
     .lte("occurred_on", to)
     .order("occurred_on", { ascending: false })
@@ -61,7 +64,18 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   const byDay = new Map<string, Tx[]>();
   for (const t of txs) byDay.set(t.occurred_on, [...(byDay.get(t.occurred_on) ?? []), t]);
 
-  const accountName = (id: string | null) => accounts.find((a) => a.id === id)?.name ?? "";
+  // compras no cartão: descobre o cartão pela fatura
+  const billIds = [...new Set(txs.map((t) => t.card_bill_id).filter(Boolean))] as string[];
+  const { data: bills } = billIds.length
+    ? await supabase.from("card_bills").select("id, card_id").in("id", billIds)
+    : { data: [] as { id: string; card_id: string }[] };
+  const placeName = (t: Tx) => {
+    if (t.card_bill_id) {
+      const cardId = bills?.find((b) => b.id === t.card_bill_id)?.card_id;
+      return cards.find((c) => c.id === cardId)?.name ?? "Cartão";
+    }
+    return accounts.find((a) => a.id === t.account_id)?.name ?? "";
+  };
   const keep = (extra: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
     const all = { mes: month, conta: accountId, categoria: categoryId, q: q || undefined, status, ...extra };
@@ -86,7 +100,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         <Link href={keep({ mes: shiftMonth(month, -1) })} className="btn-ghost border-0 p-2" aria-label="Mês anterior">
           <ChevronLeft className="size-5" />
         </Link>
-        <span className="font-semibold capitalize">{monthLabel(month)}</span>
+        <span className="font-semibold">{monthTitle(month)}</span>
         <Link href={keep({ mes: shiftMonth(month, 1) })} className="btn-ghost border-0 p-2" aria-label="Próximo mês">
           <ChevronRight className="size-5" />
         </Link>
@@ -173,7 +187,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                           <p className="muted truncate text-xs">
                             {isTransfer ? (positive ? "Entrada de transferência" : "Saída de transferência") : cat ?? "Sem categoria"}
                             {" · "}
-                            {accountName(t.account_id)}
+                            {placeName(t)}
                           </p>
                         </div>
                         <span
@@ -181,10 +195,15 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                             t.status === "pending" ? "muted" : isTransfer ? "" : positive ? "text-income" : "text-expense"
                           }`}
                         >
-                          {positive ? "+" : "−"} {formatCents(t.amount_cents)}
+                          {t.status === "pending" && t.amount_cents <= 1 ? "a confirmar" : `${positive ? "+" : "−"} ${formatCents(t.amount_cents)}`}
                         </span>
                       </Link>
-                      {t.status === "pending" && (
+                      {t.status === "pending" && t.amount_cents <= 1 && (
+                        <Link href={`/lancamentos/${t.id}`} className="rounded-lg border border-[var(--border)] px-2 py-1 text-xs font-medium">
+                          Informar valor
+                        </Link>
+                      )}
+                      {t.status === "pending" && t.amount_cents > 1 && (
                         <form action={markPaid}>
                           <input type="hidden" name="id" value={t.id} />
                           <button

@@ -13,6 +13,7 @@ type AccountOpt = { id: string; name: string };
 type Props = {
   action: (state: ActionState, form: FormData) => Promise<ActionState>;
   accounts: AccountOpt[];
+  cards?: AccountOpt[];
   categories: Category[];
   today: string;
   defaults?: {
@@ -34,12 +35,16 @@ const KINDS: { value: Kind; label: string; on: string }[] = [
   { value: "transfer", label: "Transferência", on: "bg-brand-700 text-white" },
 ];
 
-export function TransactionForm({ action, accounts, categories, today, defaults, defaultAccountId }: Props) {
+export function TransactionForm({ action, accounts, cards = [], categories, today, defaults, defaultAccountId }: Props) {
   const editing = Boolean(defaults);
   const [kind, setKind] = useState<Kind>(defaults?.kind ?? "expense");
   const [state, formAction] = useActionState(action, undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
+  const firstAccount = defaults?.account_id ?? defaultAccountId ?? accounts[0]?.id ?? (cards[0] ? `card:${cards[0].id}` : "");
+  const [destination, setDestination] = useState(firstAccount);
+  const onCard = kind === "expense" && destination.startsWith("card:");
+  const accountDefault = destination.startsWith("card:") ? accounts[0]?.id : destination;
 
   // "Salvar e lançar outro": limpa valor e descrição, mantém conta, data e tipo
   useEffect(() => {
@@ -52,7 +57,7 @@ export function TransactionForm({ action, accounts, categories, today, defaults,
     }
   }, [state]);
 
-  if (accounts.length === 0) {
+  if (accounts.length === 0 && cards.length === 0) {
     return (
       <div className="card space-y-3 p-6 text-center">
         <p className="font-medium">Antes de lançar, cadastre uma conta.</p>
@@ -60,8 +65,6 @@ export function TransactionForm({ action, accounts, categories, today, defaults,
       </div>
     );
   }
-
-  const firstAccount = defaults?.account_id ?? defaultAccountId ?? accounts[0].id;
 
   return (
     <form ref={formRef} action={formAction} className="card space-y-5 p-5">
@@ -126,9 +129,29 @@ export function TransactionForm({ action, accounts, categories, today, defaults,
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="label" htmlFor="account_id">{kind === "transfer" ? "Sai de" : "Conta"}</label>
-          <select className="input" id="account_id" name="account_id" defaultValue={firstAccount}>
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          <label className="label" htmlFor="account_id">
+            {kind === "transfer" ? "Sai de" : kind === "expense" && cards.length > 0 ? "Conta ou cartão" : "Conta"}
+          </label>
+          <select
+            key={kind}
+            className="input"
+            id="account_id"
+            name="account_id"
+            defaultValue={kind === "expense" ? destination : accountDefault}
+            onChange={(e) => setDestination(e.target.value)}
+          >
+            {kind === "expense" && cards.length > 0 && !editing ? (
+              <>
+                <optgroup label="Contas">
+                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </optgroup>
+                <optgroup label="Cartões de crédito">
+                  {cards.map((c) => <option key={c.id} value={`card:${c.id}`}>{c.name}</option>)}
+                </optgroup>
+              </>
+            ) : (
+              accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)
+            )}
           </select>
         </div>
         {kind === "transfer" ? (
@@ -138,7 +161,7 @@ export function TransactionForm({ action, accounts, categories, today, defaults,
               className="input"
               id="to_account_id"
               name="to_account_id"
-              defaultValue={accounts.find((a) => a.id !== firstAccount)?.id ?? ""}
+              defaultValue={accounts.find((a) => a.id !== accountDefault)?.id ?? ""}
             >
               {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
@@ -158,7 +181,19 @@ export function TransactionForm({ action, accounts, categories, today, defaults,
         </div>
       )}
 
-      {kind !== "transfer" && (
+      {onCard && (
+        <div>
+          <label className="label" htmlFor="installments">Parcelas</label>
+          <select className="input" id="installments" name="installments" defaultValue="1">
+            {Array.from({ length: 24 }, (_, i) => i + 1).map((n) => (
+              <option key={n} value={n}>{n === 1 ? "À vista" : `${n}x`}</option>
+            ))}
+          </select>
+          <p className="muted mt-1 text-xs">O valor acima é o total da compra; cada parcela cai numa fatura.</p>
+        </div>
+      )}
+
+      {kind !== "transfer" && !onCard && (
         <label className="flex items-center gap-3 text-sm">
           <input
             type="checkbox"

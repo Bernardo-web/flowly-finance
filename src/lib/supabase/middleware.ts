@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-const PUBLIC_PATHS = ["/entrar", "/cadastro", "/recuperar", "/auth/", "/api/keepalive"];
+const PUBLIC_PATHS = ["/entrar", "/cadastro", "/recuperar", "/auth/", "/api/keepalive", "/privacidade"];
 
 /** Renova a sessão a cada requisição e protege as páginas internas. */
 export async function updateSession(request: NextRequest) {

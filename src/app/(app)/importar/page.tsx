@@ -28,7 +28,7 @@ export default async function ImportPage() {
     <div className="space-y-6">
       <PageHeader
         title="Importar extrato"
-        subtitle="No app ou site do BB, exporte o extrato da conta em CSV e escolha o arquivo aqui."
+        subtitle="No app ou site do banco, exporte o extrato da conta em OFX ou CSV e escolha o arquivo aqui. Do BB, o CSV já vem com categorias."
       />
 
       <ImportWizard

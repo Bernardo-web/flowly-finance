@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronRight, FileUp, LogOut, Tags, Ticket } from "lucide-react";
+import { ChevronRight, CreditCard, FileUp, LogOut, PiggyBank, Repeat, Settings, Tags, Ticket } from "lucide-react";
 import { getUser } from "@/lib/supabase/server";
 import { signOut } from "@/app/(auth)/actions";
 
@@ -11,9 +11,13 @@ export default async function MorePage() {
   const { data: profile } = await supabase.from("profiles").select("full_name, is_admin").eq("id", user!.id).single();
 
   const links = [
+    { href: "/cartoes", label: "Cartões de crédito", icon: CreditCard },
+    { href: "/orcamentos", label: "Orçamentos", icon: PiggyBank },
+    { href: "/recorrencias", label: "Recorrências", icon: Repeat },
     { href: "/importar", label: "Importar extrato", icon: FileUp },
     { href: "/categorias", label: "Categorias", icon: Tags },
     ...(profile?.is_admin ? [{ href: "/convites", label: "Convites", icon: Ticket }] : []),
+    { href: "/configuracoes", label: "Configurações", icon: Settings },
   ];
 
   return (
