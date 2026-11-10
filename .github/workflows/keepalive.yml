@@ -1,7 +1,7 @@
 # Mantém o Supabase gratuito ativo: chama /api/keepalive a cada 6 horas.
 # Configure em Settings > Secrets and variables > Actions:
 #   - secret   CRON_SECRET  (o mesmo valor cadastrado na Vercel)
-#   - variable SITE_URL     (ex.: https://flowly-finance-ivory.vercel.app)
+#   - variable SITE_URL     (opcional; padrão: https://flowly-finance-ivory.vercel.app)
 name: Manter banco ativo
 
 on:
@@ -16,7 +16,7 @@ jobs:
       - name: Chamar keepalive
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          SITE_URL: ${{ vars.SITE_URL }}
+          SITE_URL: ${{ vars.SITE_URL || secrets.SITE_URL || 'https://flowly-finance-ivory.vercel.app' }}
         run: |
           if [ -z "$SITE_URL" ]; then echo "Variável SITE_URL não configurada"; exit 1; fi
           for i in 1 2 3; do
