@@ -21,6 +21,8 @@ function translate(message: string): string {
   if (m.includes("email not confirmed")) return "Confirme seu e-mail pelo link que enviamos antes de entrar.";
   if (m.includes("already registered")) return "Já existe uma conta com este e-mail.";
   if (m.includes("rate limit") || m.includes("too many")) return "Muitas tentativas. Aguarde alguns minutos.";
+  if (m.includes("fetch") || m.includes("abort") || m.includes("timeout") || m.includes("network"))
+    return "O servidor do Flowly não respondeu. Tente de novo em alguns instantes.";
   if (m.includes("password")) return "Senha fraca: use pelo menos 8 caracteres, com letras e números.";
   if (m.includes("database error")) return "Não foi possível criar a conta. Confira o convite.";
   return "Algo deu errado. Tente de novo.";

@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 import { cookies } from "next/headers";
 import { cache } from "react";
+import { fetchWithTimeout, withTimeout } from "./timeout";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
@@ -12,6 +13,7 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: { fetch: fetchWithTimeout(8000) },
       cookies: {
         getAll: () => cookieStore.getAll(),
         setAll: (toSet: CookieToSet[]) => {
@@ -35,8 +37,11 @@ export type SessionUser = { id: string; email: string };
  */
 export const getUser = cache(async () => {
   const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-  const claims = data?.claims;
+  type Claims = Awaited<ReturnType<typeof supabase.auth.getClaims>>;
+  const result = await withTimeout<Claims | null>(supabase.auth.getClaims(), 5000, null);
+  // sem resposta do Supabase: mostra a tela de erro em vez de travar ou deslogar a pessoa
+  if (result === null) throw new Error("SUPABASE_UNAVAILABLE");
+  const claims = result.data?.claims;
   const user: SessionUser | null = claims?.sub ? { id: claims.sub, email: String(claims.email ?? "") } : null;
   return { supabase, user };
 });

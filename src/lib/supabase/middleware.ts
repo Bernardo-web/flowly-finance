@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 import { NextResponse, type NextRequest } from "next/server";
+import { fetchWithTimeout, withTimeout } from "./timeout";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
@@ -14,6 +15,7 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: { fetch: fetchWithTimeout(4000) },
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll: (toSet: CookieToSet[]) => {
@@ -26,8 +28,11 @@ export async function updateSession(request: NextRequest) {
   );
 
   // verifica o token pela assinatura (sem ida ao servidor) e renova a sessão se estiver vencendo
-  const { data } = await supabase.auth.getClaims();
-  const loggedIn = Boolean(data?.claims?.sub);
+  // Se o Supabase não responder a tempo, segue sem bloquear: a página decide o que mostrar.
+  type Claims = Awaited<ReturnType<typeof supabase.auth.getClaims>>;
+  const result = await withTimeout<Claims | null>(supabase.auth.getClaims(), 3000, null);
+  if (result === null) return response;
+  const loggedIn = Boolean(result.data?.claims?.sub);
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
 
